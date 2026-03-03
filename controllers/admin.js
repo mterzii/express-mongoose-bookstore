@@ -1,11 +1,13 @@
 const Product = require('../models/product');
 
 exports.getAddProduct = (req, res, next) => {
+ 
+
   res.render('admin/edit-product', {
     pageTitle: 'Add Product',
     path: '/admin/add-product',
     editing: false,
-    isAuthenticated: req.isLoggedIn
+    isAuthenticated: req.session.isLoggedIn
   });
 };
 
@@ -14,7 +16,13 @@ exports.postAddProduct = (req, res, next) => {
   const imageUrl = req.body.imageUrl;
   const price = req.body.price;
   const description = req.body.description;
-  const product = new Product({ title: title, price: price, description: description, imageUrl: imageUrl, userId: req.user._id, userId: req.session.user });
+  const product = new Product({
+    title: title,
+    price: price,
+    description: description,
+    imageUrl: imageUrl,
+    userId: req.user
+  });
   product
     .save()
     .then(result => {
@@ -34,7 +42,6 @@ exports.getEditProduct = (req, res, next) => {
   }
   const prodId = req.params.productId;
   Product.findById(prodId)
-    // Product.findById(prodId)
     .then(product => {
       if (!product) {
         return res.redirect('/');
@@ -44,7 +51,7 @@ exports.getEditProduct = (req, res, next) => {
         path: '/admin/edit-product',
         editing: editMode,
         product: product,
-        isAuthenticated: req.isLoggedIn
+        isAuthenticated: req.session.isLoggedIn
       });
     })
     .catch(err => console.log(err));
@@ -59,33 +66,30 @@ exports.postEditProduct = (req, res, next) => {
 
   Product.findById(prodId)
     .then(product => {
-      if (!product) {
-        return res.redirect('/admin/products');
-      }
-
       product.title = updatedTitle;
       product.price = updatedPrice;
       product.description = updatedDesc;
       product.imageUrl = updatedImageUrl;
-
       return product.save();
     })
-    .then(() => {
+    .then(result => {
       console.log('UPDATED PRODUCT!');
       res.redirect('/admin/products');
     })
     .catch(err => console.log(err));
 };
+
 exports.getProducts = (req, res, next) => {
-  Product.find() //Products koleksiyonundaki tüm ürünleri çeker.
-    // .select('title price -_id')//"Bana sadece ürünün başlığını (title) ve fiyatını (price) getir"||-_id: Baştaki eksi (-) işareti "hariç tut" demektir.
-    // .populate('userId', 'name')//userId: "Hangi alanı doldurayım?" sorusunun cevabıdır.'name': "Kullanıcı tablosundan hangi bilgiyi getireyim?" sorusunun cevabıdır.
+  Product.find()
+    // .select('title price -_id')
+    // .populate('userId', 'name')
     .then(products => {
+      console.log(products);
       res.render('admin/products', {
         prods: products,
         pageTitle: 'Admin Products',
         path: '/admin/products',
-        isAuthenticated: req.isLoggedIn
+        isAuthenticated: req.session.isLoggedIn
       });
     })
     .catch(err => console.log(err));
@@ -93,7 +97,7 @@ exports.getProducts = (req, res, next) => {
 
 exports.postDeleteProduct = (req, res, next) => {
   const prodId = req.body.productId;
-  Product.findByIdAndDelete(prodId)
+  Product.findByIdAndRemove(prodId)
     .then(() => {
       console.log('DESTROYED PRODUCT');
       res.redirect('/admin/products');
