@@ -4,3 +4,19 @@
   margin: auto;
   display: block;
 }
+
+.user-message {
+  width: 90%;
+  max-width: 30rem;
+  margin: 1rem auto;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+}
+
+.user-message--error {
+  border-color: #ffb3b3;
+  background: #ffe5e5;
+  color: #b00020;
+}
