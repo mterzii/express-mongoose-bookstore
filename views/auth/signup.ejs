@@ -10,7 +10,8 @@
         <% if (errorMessage) { %>
   <div class="user-message user-message--error"><%= errorMessage %></div>
 <% } %>
-        <form class="login-form" action="/signup" method="POST">
+<!-- novalidate :en kendi özel doğrulama sistemimi (express-validator) sunucu tarafında kullanacağım, senin otomatik uyarılarını gösterme -->
+        <form class="login-form" action="/signup" method="POST" novalidate>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <div class="form-control">
                 <label for="email">E-Mail</label>
