@@ -50,6 +50,12 @@ exports.getLogin = (req, res, next) => {
   res.render('auth/login', {
     path: '/login',
     pageTitle: 'Login',
+    errorMessage: message,
+    oldInput: {
+      email: '',
+      password: ''
+    },
+    validationErrors: []
   });
 };
 
@@ -59,20 +65,22 @@ exports.getLogin = (req, res, next) => {
 // SIGNUP SAYFASI
 // ===============================
 exports.getSignup = (req, res, next) => {
-
-  // Flash mesajını al
   let message = req.flash('error');
-
   if (message.length > 0) {
-    message = message[0]; // ilk mesaj
+    message = message[0];
   } else {
     message = null;
   }
-
-  // Signup sayfasını render ediyoruz
   res.render('auth/signup', {
     path: '/signup',
     pageTitle: 'Signup',
+    oldInput: {
+      email: '',
+      password: '',
+      confirmPassword: ''
+    },
+    errorMessage: message,
+    validationErrors: [] // <--- Bunu ekle!
   });
 };
 
@@ -87,58 +95,61 @@ exports.postLogin = (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
 
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.log(errors.array());
+    return res.status(422).render('auth/login', {
+      path: '/login',
+      pageTitle: 'Login',
+      errorMessage: 'Invalid email or password.',
+      oldInput: {
+        email: email,
+        password: password
+      }
+      , validationErrors: []
+    });
+  }
+
+
   // Email'e göre kullanıcıyı DB'de ara
   User.findOne({ email: email })
-
     .then(user => {
-
       // Eğer kullanıcı bulunamazsa
       if (!user) {
         req.flash('error', 'Invalid email or password.');
         return res.redirect('/login');
       }
-
       // Girilen şifre ile DB'deki hash karşılaştırılır
       return bcrypt.compare(password, user.password)
-
         .then(doMatch => {
-
           // Şifre doğruysa
           if (doMatch) {
-
-            // Session içine login bilgisini kaydet
+            // Session içine  bilgisini kaydet
             req.session.isLoggedIn = true;
-
-            // BSON hatası çözümü için sadece ID string olarak saklanır
             req.session.user = user._id.toString();
-
-            // Session kaydedilir
             return req.session.save(err => {
               if (err) console.log(err);
-
               // Ana sayfaya yönlendir
               res.redirect('/');
             });
           }
-
           // Şifre yanlışsa tekrar login
           res.redirect('/login');
         });
     })
 
     .catch(err => {
-      console.log(err);
-      res.redirect('/login');
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
 
 
-// ===============================
 // SIGNUP İŞLEMİ
 // ===============================
 exports.postSignup = (req, res, next) => {
-
   const email = req.body.email;
   const password = req.body.password;
   const confirmPassword = req.body.confirmPassword;
@@ -155,63 +166,65 @@ exports.postSignup = (req, res, next) => {
       pageTitle: 'Sign Up',
       errorMessage: errors.array()[0].msg,
       //errorMessage: errors.array() hatayı gösterir.Kullanıcı nerde hata yaptıgını görür
+      oldInput: {
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword
+      },
+      validationErrors: errors.array()
     });
-  }
-
-  // Şifreler eşleşmiyorsa
-  if (password !== confirmPassword) {
-    req.flash('error', 'Passwords do not match.');
-    return res.redirect('/signup');
   }
 
   // Aynı email DB'de var mı kontrol et
   User.findOne({ email: email })
-
     .then(userDoc => {
-
       // Email zaten varsa
       if (userDoc) {
-        req.flash('error', 'Email already exists. Please choose a different one.');
-        return res.redirect('/signup');
+        // BURASI GÜNCELLENDİ: redirect yerine render kullanarak kutuyu kırmızı yapıyoruz
+        return res.status(422).render('auth/signup', {
+          path: '/signup',
+          pageTitle: 'Sign Up',
+          errorMessage: 'Email already exists. Please choose a different one.',
+          oldInput: {
+            email: email,
+            password: password,
+            confirmPassword: confirmPassword
+          },
+          // Manuel olarak email alanının hatalı olduğunu belirtiyoruz
+          validationErrors: errors.array()
+        });
       }
 
       // Şifreyi hashle
-      return bcrypt.hash(password, 12);
-    })
+      return bcrypt.hash(password, 12)
+        .then(hashedPassword => {
+          // Yeni kullanıcı oluştur
+          const user = new User({
+            email: email,
+            password: hashedPassword,
+            cart: { items: [] }
+          });
 
-    .then(hashedPassword => {
-
-      // Eğer redirect olduysa hashedPassword undefined olabilir
-      if (!hashedPassword) return;
-
-      // Yeni kullanıcı oluştur
-      const user = new User({
-        email: email,
-        password: hashedPassword,
-        cart: { items: [] }
-      });
-
-      return user.save();
-    })
-
-    .then(result => {
-
-      // Kullanıcıya mail gönder
-      return transporter.sendMail({
-        to: 'mertterzi.143@gmail.com', // alıcı
-        from: email, // gönderen
-        subject: 'Signup succeeded!', // mail konusu
-        html: '<h1>You successfully signed up!</h1>' // mail içeriği
-      })
-
+          return user.save();
+        })
+        .then(result => {
+          // Kullanıcıya mail gönder
+          return transporter.sendMail({
+            to: 'mertterzi.143@gmail.com', // alıcı
+            from: 'mertterzi.143@gmail.com', // gönderen (Onaylı mail adresin olmalı)
+            subject: 'Signup succeeded!', // mail konusu
+            html: '<h1>You successfully signed up!</h1>' // mail içeriği
+          });
+        })
         .then(() => {
           // Signup sonrası login sayfasına yönlendir
           res.redirect('/login');
         });
     })
-
     .catch(err => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
@@ -308,7 +321,9 @@ exports.postReset = (req, res, next) => {
           });
       })
       .catch(err => {
-        console.log('Reset işlemi sırasında hata:', err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
       });
   });
 };
@@ -338,7 +353,9 @@ exports.getNewPassword = (req, res, next) => {
       });
     })
     .catch(err => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
@@ -370,6 +387,8 @@ exports.postNewPassword = (req, res, next) => {
       res.redirect('/login');
     })
     .catch(err => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 }

@@ -9,7 +9,21 @@ router.get('/login', authController.getLogin);
 
 router.get('/signup', authController.getSignup);
 
-router.post('/login', authController.postLogin);
+router.post(
+    '/login',
+    [
+        body('email')
+            .isEmail()
+            .withMessage('Please enter a valid email address.')
+            .normalizeEmail(),
+
+        body('password', 'Password has to be valid.')
+            .isLength({ min: 5 })
+            .isAlphanumeric()
+            .trim()
+    ],
+    authController.postLogin
+);
 
 router.post('/signup', check('email').isEmail().withMessage('Please enter a valid email')
     .custom((value, { req }) => {
@@ -19,9 +33,10 @@ router.post('/signup', check('email').isEmail().withMessage('Please enter a vali
                     return Promise.reject('E-Mail exists already, please pick a different one.');
                 }
             });
-    }),
+    }).normalizeEmail(),
+    //BÜYÜK HARF → küçük harf
     // body('password') req.body.password demek
-    body('password', 'Password must be at least 5 characters long').isLength({ min: 5 }).isAlphanumeric()
+    body('password', 'Password must be at least 5 characters long').isLength({ min: 5 }).isAlphanumeric().trim()
     ,
     body('confirmPassword').custom((value, { req }) => {
         //Confirm Password value demek 
