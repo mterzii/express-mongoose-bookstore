@@ -1,8 +1,7 @@
-# express-mongoose-bookstore
+# Bookstore E-Commerce Backend (Payment Trial)
 
-A full-stack bookstore / e-commerce backend application built with Node.js, Express, MongoDB, and Mongoose.
-
-This project includes authentication, product management, cart functionality, order creation, Stripe payment integration, image uploads, and invoice generation.
+A production-style full-stack bookstore e-commerce backend developed with Node.js, Express, MongoDB, and Mongoose.
+The application features authentication and authorization, product management, cart and order processing, Stripe-based payment flow, image upload handling, and automated invoice generation.
 
 
 ## Features
