@@ -1,0 +1,71 @@
+<%- include('../includes/head.ejs') %>
+<link rel="stylesheet" href="/css/cart.css">
+</head>
+
+<body>
+    <%- include('../includes/navigation.ejs') %>
+
+    <main>
+        <% if (products && products.length > 0) { %>
+            <ul class="cart__item-list">
+                <% products.forEach(p => { %>
+                    <li class="cart__item centered">
+                        <h1><%= p.productId.title %></h1>
+                        <h2>Quantity: <%= p.quantity %></h2>
+                    </li>
+                <% }) %>
+            </ul>
+
+            <div class="centered">
+                <h2>Total: <%= totalSum %></h2>
+            </div>
+
+            <div class="centered">
+                <button id="order-btn" class="btn" type="button">ORDER</button>
+            </div>
+        <% } else { %>
+            <h1 class="centered">No products in cart.</h1>
+        <% } %>
+    </main>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+        const publicKey = "<%= stripePublicKey || '' %>";
+        const sessionId = "<%= sessionId || '' %>";
+        const orderBtn = document.getElementById('order-btn');
+
+        console.log('stripePublicKey:', publicKey);
+        console.log('sessionId:', sessionId);
+
+        if (orderBtn) {
+            orderBtn.addEventListener('click', async function () {
+                if (!publicKey) {
+                    alert('Stripe public key bulunamadı.');
+                    return;
+                }
+
+                if (!sessionId) {
+                    alert('Stripe session oluşturulamadı.');
+                    return;
+                }
+
+                try {
+                    const stripe = Stripe(publicKey);
+
+                    const result = await stripe.redirectToCheckout({
+                        sessionId: sessionId
+                    });
+
+                    if (result.error) {
+                        console.error(result.error.message);
+                        alert(result.error.message);
+                    }
+                } catch (err) {
+                    console.error('Stripe redirect error:', err);
+                    alert('Checkout başlatılırken hata oluştu.');
+                }
+            });
+        }
+    </script>
+
+    <%- include('../includes/end.ejs') %>
